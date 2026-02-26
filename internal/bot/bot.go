@@ -6,7 +6,6 @@ import (
 
 	"github.com/mymmrac/telego"
 	th "github.com/mymmrac/telego/telegohandler"
-	tu "github.com/mymmrac/telego/telegoutil"
 
 	"github.com/user/leetcode-bot/internal/gamification"
 	"github.com/user/leetcode-bot/internal/leetcode"
@@ -138,11 +137,6 @@ func (b *Bot) GracefulShutdown() {
 	log.Println("[bot] graceful shutdown complete")
 }
 
-// --- Stub handler methods ---
-// Callback handler is a stub until replaced by callbacks.go (subtask-6-4).
+// --- Handler methods ---
 // Command handlers (handleStart, handleHelp, etc.) are in handlers.go.
-
-func (b *Bot) handleCallback(ctx *th.Context, query telego.CallbackQuery) error {
-	// Acknowledge the callback query.
-	return b.api.AnswerCallbackQuery(ctx, tu.CallbackQuery(query.ID).WithText("OK"))
-}
+// Callback query handler (handleCallback) is in callbacks.go.
