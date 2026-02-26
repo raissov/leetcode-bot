@@ -406,3 +406,38 @@ func extractTotalQuestions(counts []leetcode.QuestionCount) (easy, medium, hard 
 
 	return easy, medium, hard
 }
+
+// ListProgress represents a user's progress on a curated problem list.
+type ListProgress struct {
+	ListName    string   // Name of the curated list (e.g., "Blind 75")
+	TotalCount  int      // Total number of problems in the list
+	SolvedCount int      // Number of problems the user has solved from the list
+	Percentage  float64  // Solved/Total * 100
+	SolvedSlugs []string // List of solved problem slugs from this list
+}
+
+// ComputeListProgress computes a user's progress on a specific curated list.
+// It cross-references the user's solved problems with the problems in the list
+// to determine how many the user has completed. Returns nil if the list does
+// not exist.
+func (c *Collector) ComputeListProgress(ctx context.Context, userID int64, listName string) (*ListProgress, error) {
+	// Fetch progress from the storage layer.
+	progress, err := c.store.GetUserProgressOnList(userID, listName)
+	if err != nil {
+		return nil, fmt.Errorf("get user progress on list: %w", err)
+	}
+
+	// If the list doesn't exist, return nil.
+	if progress == nil {
+		return nil, nil
+	}
+
+	// Convert storage.UserListProgress to stats.ListProgress.
+	return &ListProgress{
+		ListName:    progress.ListName,
+		TotalCount:  progress.TotalCount,
+		SolvedCount: progress.SolvedCount,
+		Percentage:  progress.Percentage,
+		SolvedSlugs: progress.SolvedSlugs,
+	}, nil
+}

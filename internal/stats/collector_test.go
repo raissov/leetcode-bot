@@ -2,6 +2,7 @@ package stats
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/user/leetcode-bot/internal/leetcode"
@@ -328,6 +329,165 @@ func TestSyncSolvedProblems_SkipsMissingDetails(t *testing.T) {
 	}
 	if solved[0].ProblemSlug != "two-sum" {
 		t.Errorf("solved problem = %q, want %q", solved[0].ProblemSlug, "two-sum")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ComputeListProgress tests
+// ---------------------------------------------------------------------------
+
+func TestCuratedListProgress(t *testing.T) {
+	db := testDB(t)
+
+	// Create a test user.
+	user, err := db.CreateUser(12345, "alice")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	// Load a curated list with some test problems.
+	// We'll create a temporary JSON file for this.
+	listData := []byte(`{
+		"name": "Test List",
+		"description": "A test curated list",
+		"problems": [
+			{
+				"slug": "two-sum",
+				"title": "Two Sum",
+				"difficulty": "Easy",
+				"topics": ["Array", "Hash Table"]
+			},
+			{
+				"slug": "add-two-numbers",
+				"title": "Add Two Numbers",
+				"difficulty": "Medium",
+				"topics": ["Linked List", "Math"]
+			},
+			{
+				"slug": "longest-substring",
+				"title": "Longest Substring",
+				"difficulty": "Medium",
+				"topics": ["String", "Hash Table"]
+			}
+		]
+	}`)
+
+	tmpFile := t.TempDir() + "/test_list.json"
+	if err := os.WriteFile(tmpFile, listData, 0644); err != nil {
+		t.Fatalf("write test list: %v", err)
+	}
+
+	if err := db.LoadCuratedList(tmpFile); err != nil {
+		t.Fatalf("load curated list: %v", err)
+	}
+
+	// Mark two problems as solved.
+	if err := db.SaveUserSolvedProblem(user.ID, "two-sum"); err != nil {
+		t.Fatalf("save solved problem: %v", err)
+	}
+	if err := db.SaveUserSolvedProblem(user.ID, "longest-substring"); err != nil {
+		t.Fatalf("save solved problem: %v", err)
+	}
+
+	// Create a collector.
+	collector := NewCollector(nil, db)
+
+	// Compute list progress.
+	progress, err := collector.ComputeListProgress(context.Background(), user.ID, "Test List")
+	if err != nil {
+		t.Fatalf("compute list progress: %v", err)
+	}
+
+	// Verify the progress.
+	if progress == nil {
+		t.Fatal("expected progress, got nil")
+	}
+	if progress.ListName != "Test List" {
+		t.Errorf("list name = %q, want %q", progress.ListName, "Test List")
+	}
+	if progress.TotalCount != 3 {
+		t.Errorf("total count = %d, want 3", progress.TotalCount)
+	}
+	if progress.SolvedCount != 2 {
+		t.Errorf("solved count = %d, want 2", progress.SolvedCount)
+	}
+	if progress.Percentage < 66.0 || progress.Percentage > 67.0 {
+		t.Errorf("percentage = %f, want ~66.67", progress.Percentage)
+	}
+	if len(progress.SolvedSlugs) != 2 {
+		t.Fatalf("solved slugs length = %d, want 2", len(progress.SolvedSlugs))
+	}
+
+	// Verify solved slugs contain the right problems.
+	solvedSet := make(map[string]bool)
+	for _, slug := range progress.SolvedSlugs {
+		solvedSet[slug] = true
+	}
+	if !solvedSet["two-sum"] || !solvedSet["longest-substring"] {
+		t.Errorf("solved slugs = %v, want [two-sum, longest-substring]", progress.SolvedSlugs)
+	}
+}
+
+func TestCuratedListProgress_NotFound(t *testing.T) {
+	db := testDB(t)
+
+	user, _ := db.CreateUser(12345, "alice")
+
+	collector := NewCollector(nil, db)
+
+	// Try to compute progress for a non-existent list.
+	progress, err := collector.ComputeListProgress(context.Background(), user.ID, "Non-Existent List")
+	if err != nil {
+		t.Fatalf("compute list progress: %v", err)
+	}
+
+	// Should return nil for a non-existent list.
+	if progress != nil {
+		t.Errorf("expected nil progress for non-existent list, got %+v", progress)
+	}
+}
+
+func TestCuratedListProgress_NoSolved(t *testing.T) {
+	db := testDB(t)
+
+	user, _ := db.CreateUser(12345, "alice")
+
+	// Load a curated list but don't solve any problems.
+	listData := []byte(`{
+		"name": "Empty Progress List",
+		"description": "A list with no progress",
+		"problems": [
+			{
+				"slug": "two-sum",
+				"title": "Two Sum",
+				"difficulty": "Easy",
+				"topics": ["Array"]
+			}
+		]
+	}`)
+
+	tmpFile := t.TempDir() + "/empty_progress.json"
+	os.WriteFile(tmpFile, listData, 0644)
+	db.LoadCuratedList(tmpFile)
+
+	collector := NewCollector(nil, db)
+
+	progress, err := collector.ComputeListProgress(context.Background(), user.ID, "Empty Progress List")
+	if err != nil {
+		t.Fatalf("compute list progress: %v", err)
+	}
+
+	if progress == nil {
+		t.Fatal("expected progress, got nil")
+	}
+	if progress.SolvedCount != 0 {
+		t.Errorf("solved count = %d, want 0", progress.SolvedCount)
+	}
+	if progress.Percentage != 0 {
+		t.Errorf("percentage = %f, want 0", progress.Percentage)
+	}
+	if len(progress.SolvedSlugs) != 0 {
+		t.Errorf("expected empty solved slugs, got %v", progress.SolvedSlugs)
 	}
 }
 
