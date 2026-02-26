@@ -8,7 +8,7 @@ package leetcode
 // stats (by difficulty), badges, contribution points, recent submissions, and
 // the full question count breakdown. The submissionCalendar field returns a
 // JSON-encoded string that requires double-parsing.
-const QueryUserProfile = `query ($username: String!) {
+const QueryUserProfile = `query getUserProfile($username: String!) {
   allQuestionsCount {
     difficulty
     count
@@ -91,7 +91,7 @@ const QueryUserCalendar = `query UserProfileCalendar($username: String!, $year: 
 // QueryDailyChallenge fetches today's daily coding challenge, including the
 // question details (title, difficulty, topic tags, link) and challenge metadata
 // (streak count, incomplete challenge count).
-const QueryDailyChallenge = `query {
+const QueryDailyChallenge = `query questionOfToday {
   activeDailyCodingChallengeQuestion {
     date
     link
@@ -120,7 +120,7 @@ const QueryDailyChallenge = `query {
 // QueryRecentSubmissions fetches a user's recent submissions with a
 // configurable limit. Each submission includes the problem title, slug,
 // unix timestamp (in seconds), acceptance status, and language used.
-const QueryRecentSubmissions = `query ($username: String!, $limit: Int) {
+const QueryRecentSubmissions = `query getRecentSubmissionList($username: String!, $limit: Int) {
   recentSubmissionList(username: $username, limit: $limit) {
     title
     titleSlug
@@ -134,7 +134,7 @@ const QueryRecentSubmissions = `query ($username: String!, $limit: Int) {
 // solved (accepted submissions). Returns problem metadata including title,
 // slug, and submission timestamp. Uses a high limit to capture all solved
 // problems (LeetCode API supports up to 5000 results).
-const QueryUserSolvedProblems = `query ($username: String!, $limit: Int!) {
+const QueryUserSolvedProblems = `query getUserSolvedProblems($username: String!, $limit: Int!) {
   recentAcSubmissionList(username: $username, limit: $limit) {
     id
     title
@@ -146,7 +146,7 @@ const QueryUserSolvedProblems = `query ($username: String!, $limit: Int!) {
 // QueryProblemDetails fetches detailed metadata for a specific problem
 // including difficulty level and topic tags. Used to enrich solved problem
 // data with full metadata.
-const QueryProblemDetails = `query ($titleSlug: String!) {
+const QueryProblemDetails = `query getProblemDetails($titleSlug: String!) {
   question(titleSlug: $titleSlug) {
     questionId
     questionFrontendId
