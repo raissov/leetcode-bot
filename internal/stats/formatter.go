@@ -250,6 +250,59 @@ func FormatAchievements(unlocked map[string]bool, all []gamification.Achievement
 	return b.String()
 }
 
+// FormatTopicCoverage formats the user's topic coverage statistics as an
+// HTML-formatted Telegram message. Shows each topic with solved/total counts,
+// percentage, and a mini progress bar. Topics are sorted by percentage in
+// descending order.
+func FormatTopicCoverage(topicStats map[string]*TopicStats) string {
+	var b strings.Builder
+
+	b.WriteString(emojiChart + " <b>Topic Coverage</b>\n\n")
+
+	// Handle empty case.
+	if len(topicStats) == 0 {
+		b.WriteString("<i>No topics covered yet. Start solving problems to see your topic breakdown!</i>\n")
+		return b.String()
+	}
+
+	// Convert map to slice for sorting.
+	type topicEntry struct {
+		name string
+		stat *TopicStats
+	}
+	entries := make([]topicEntry, 0, len(topicStats))
+	for name, stat := range topicStats {
+		entries = append(entries, topicEntry{name: name, stat: stat})
+	}
+
+	// Sort by percentage descending, then by solved count descending.
+	for i := 0; i < len(entries); i++ {
+		for j := i + 1; j < len(entries); j++ {
+			if entries[j].stat.Percentage > entries[i].stat.Percentage ||
+				(entries[j].stat.Percentage == entries[i].stat.Percentage && entries[j].stat.Solved > entries[i].stat.Solved) {
+				entries[i], entries[j] = entries[j], entries[i]
+			}
+		}
+	}
+
+	// Format each topic.
+	for _, entry := range entries {
+		stat := entry.stat
+		b.WriteString(fmt.Sprintf("<b>%s:</b> %d/%d", stat.Topic, stat.Solved, stat.Total))
+		b.WriteString(fmt.Sprintf("  <i>(%.0f%%)</i>", stat.Percentage))
+
+		// Mini progress bar.
+		pct := int(stat.Percentage)
+		if pct > 100 {
+			pct = 100
+		}
+		b.WriteString("  " + formatMiniBar(pct))
+		b.WriteString("\n")
+	}
+
+	return b.String()
+}
+
 // --- Helper functions ---
 
 // formatDifficultyLine formats a single difficulty row with emoji, label,
