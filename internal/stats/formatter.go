@@ -303,6 +303,42 @@ func FormatTopicCoverage(topicStats map[string]*TopicStats) string {
 	return b.String()
 }
 
+// FormatWeeklyStats formats the user's weekly statistics as an HTML-formatted
+// Telegram message. Shows a calendar-style daily breakdown for the week with
+// activity indicators and summary statistics.
+func FormatWeeklyStats(weekStart, weekEnd time.Time, dailyActivity map[time.Time]int, totalSolved int) string {
+	var b strings.Builder
+
+	b.WriteString(emojiCal + " <b>Weekly Statistics</b>\n\n")
+
+	// Week range.
+	b.WriteString(fmt.Sprintf("<b>Week:</b> %s - %s\n\n",
+		weekStart.Format("Jan 02"),
+		weekEnd.Format("Jan 02, 2006")))
+
+	// Daily breakdown calendar.
+	b.WriteString("<b>Daily Activity:</b>\n")
+	b.WriteString(formatWeeklyCalendar(weekStart, dailyActivity))
+	b.WriteString("\n\n")
+
+	// Summary stats.
+	b.WriteString(fmt.Sprintf(emojiTarget+" <b>Problems Solved:</b> %d\n", totalSolved))
+
+	// Motivational message based on activity.
+	activeDays := countActiveDays(weekStart, dailyActivity)
+	if activeDays == 7 {
+		b.WriteString("\n" + emojiFire + " Perfect week! You coded every day!")
+	} else if activeDays >= 5 {
+		b.WriteString("\n" + emojiStar + " Great consistency this week!")
+	} else if activeDays > 0 {
+		b.WriteString("\n" + emojiRocket + " Keep building that momentum!")
+	} else {
+		b.WriteString("\n" + "Time to start coding! " + emojiTarget)
+	}
+
+	return b.String()
+}
+
 // --- Helper functions ---
 
 // formatDifficultyLine formats a single difficulty row with emoji, label,
@@ -442,4 +478,57 @@ func levelMinPoints(level int) int {
 		return 0
 	}
 	return thresholds[level-1]
+}
+
+// formatWeeklyCalendar renders a 7-day weekly calendar showing daily activity.
+// Similar to formatMiniCalendar but for a specific week range, showing problem
+// counts below each day.
+func formatWeeklyCalendar(weekStart time.Time, dailyActivity map[time.Time]int) string {
+	var squares strings.Builder
+	var labels strings.Builder
+	var counts strings.Builder
+
+	for i := 0; i < 7; i++ {
+		day := weekStart.AddDate(0, 0, i)
+		dayKey := day.UTC().Truncate(24 * time.Hour)
+
+		count := 0
+		if dailyActivity != nil {
+			count = dailyActivity[dayKey]
+		}
+
+		if count > 0 {
+			squares.WriteString(squareGreen)
+		} else {
+			squares.WriteString(squareGray)
+		}
+
+		// Abbreviated day name (Mo, Tu, ...).
+		labels.WriteString(day.Format("Mon")[0:2])
+
+		// Problem count for the day.
+		if count > 0 {
+			counts.WriteString(fmt.Sprintf(" %d ", count))
+		} else {
+			counts.WriteString(" - ")
+		}
+
+		if i < 6 {
+			labels.WriteString(" ")
+		}
+	}
+
+	return squares.String() + "\n<code>" + labels.String() + "</code>\n<code>" + counts.String() + "</code>"
+}
+
+// countActiveDays counts how many days in the week had activity (problems solved).
+func countActiveDays(weekStart time.Time, dailyActivity map[time.Time]int) int {
+	count := 0
+	for i := 0; i < 7; i++ {
+		day := weekStart.AddDate(0, 0, i).UTC().Truncate(24 * time.Hour)
+		if dailyActivity != nil && dailyActivity[day] > 0 {
+			count++
+		}
+	}
+	return count
 }
