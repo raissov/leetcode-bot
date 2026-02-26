@@ -122,6 +122,11 @@ func (c *Collector) FetchAndSaveStats(ctx context.Context, telegramID int64, use
 		return nil, fmt.Errorf("user with telegram_id %d not found", telegramID)
 	}
 
+	// Sync the user's complete solved problem history to the database.
+	if err := c.SyncUserSolvedProblems(ctx, user.ID, username); err != nil {
+		return nil, fmt.Errorf("sync solved problems: %w", err)
+	}
+
 	// Save today's snapshot.
 	today := time.Now().UTC().Truncate(24 * time.Hour)
 	if err := c.store.SaveSnapshot(
@@ -197,6 +202,53 @@ func (c *Collector) GetUserStats(ctx context.Context, telegramID int64) (*UserSt
 	}
 
 	return c.FetchAndSaveStats(ctx, telegramID, user.LeetCodeUser)
+}
+
+// SyncUserSolvedProblems fetches the user's complete solved problem history from
+// the LeetCode API and persists it to the database. For each solved problem, it
+// also fetches and stores the problem metadata (title, difficulty, topics).
+// This method is idempotent; duplicate entries are automatically ignored by the DB.
+func (c *Collector) SyncUserSolvedProblems(ctx context.Context, userID int64, username string) error {
+	// Fetch the list of solved problems from LeetCode.
+	solved, err := c.lc.GetUserSolvedProblems(ctx, username)
+	if err != nil {
+		return fmt.Errorf("fetch solved problems: %w", err)
+	}
+
+	// For each solved problem, fetch metadata and persist both problem and
+	// user_solved_problem records.
+	for _, sp := range solved {
+		// Fetch problem details to get difficulty and topics.
+		details, err := c.lc.GetProblemDetails(ctx, sp.TitleSlug)
+		if err != nil {
+			// Log and skip this problem if we can't fetch details, but continue
+			// processing the rest.
+			continue
+		}
+		if details == nil {
+			// Problem doesn't exist or was deleted; skip it.
+			continue
+		}
+
+		// Extract topic names from topic tags.
+		topics := make([]string, 0, len(details.TopicTags))
+		for _, tag := range details.TopicTags {
+			topics = append(topics, tag.Name)
+		}
+
+		// Save problem metadata. SaveProblem upserts, so it's safe to call
+		// multiple times.
+		if err := c.store.SaveProblem(sp.TitleSlug, details.Title, details.Difficulty, topics); err != nil {
+			return fmt.Errorf("save problem %s: %w", sp.TitleSlug, err)
+		}
+
+		// Save user solved problem record. INSERT OR IGNORE handles deduplication.
+		if err := c.store.SaveUserSolvedProblem(userID, sp.TitleSlug); err != nil {
+			return fmt.Errorf("save user solved problem %s: %w", sp.TitleSlug, err)
+		}
+	}
+
+	return nil
 }
 
 // ComputeStreak calculates the current streak (consecutive days with at least
