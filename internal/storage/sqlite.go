@@ -98,6 +98,37 @@ func (d *DB) migrate() error {
 			unlocked_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
 			UNIQUE(user_id, achievement_key)
 		)`,
+		`CREATE TABLE IF NOT EXISTS problems (
+			id              INTEGER PRIMARY KEY AUTOINCREMENT,
+			slug            TEXT UNIQUE NOT NULL,
+			title           TEXT NOT NULL DEFAULT '',
+			difficulty      TEXT NOT NULL DEFAULT '',
+			topics_json     TEXT NOT NULL DEFAULT '[]',
+			created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS user_solved_problems (
+			id              INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id         INTEGER NOT NULL REFERENCES users(id),
+			problem_slug    TEXT NOT NULL,
+			solved_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(user_id, problem_slug)
+		)`,
+		`CREATE TABLE IF NOT EXISTS curated_lists (
+			id              INTEGER PRIMARY KEY AUTOINCREMENT,
+			name            TEXT UNIQUE NOT NULL,
+			description     TEXT NOT NULL DEFAULT '',
+			created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS curated_list_problems (
+			id              INTEGER PRIMARY KEY AUTOINCREMENT,
+			list_id         INTEGER NOT NULL REFERENCES curated_lists(id),
+			problem_slug    TEXT NOT NULL,
+			position        INTEGER NOT NULL DEFAULT 0,
+			created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(list_id, problem_slug)
+		)`,
 	}
 
 	for _, m := range migrations {

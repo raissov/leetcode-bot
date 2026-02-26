@@ -188,3 +188,35 @@ type ChallengeQuestion struct {
 type recentSubmissionsResponse struct {
 	RecentSubmissionList []RecentSubmission `json:"recentSubmissionList"`
 }
+
+// --- Solved Problems ---
+
+// solvedProblemsResponse wraps the data returned by the user solved problems query.
+type solvedProblemsResponse struct {
+	RecentACSubmissionList []SolvedProblem `json:"recentAcSubmissionList"`
+}
+
+// SolvedProblem represents a single solved problem from the user's AC submission list.
+type SolvedProblem struct {
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	TitleSlug string `json:"titleSlug"`
+	Timestamp string `json:"timestamp"`
+}
+
+// --- Problem Details ---
+
+// problemDetailsResponse wraps the data returned by the problem details query.
+type problemDetailsResponse struct {
+	Question *ProblemDetails `json:"question"`
+}
+
+// ProblemDetails holds comprehensive metadata for a specific problem.
+type ProblemDetails struct {
+	QuestionID         string     `json:"questionId"`
+	QuestionFrontendID string     `json:"questionFrontendId"`
+	Title              string     `json:"title"`
+	TitleSlug          string     `json:"titleSlug"`
+	Difficulty         string     `json:"difficulty"`
+	TopicTags          []TopicTag `json:"topicTags"`
+}

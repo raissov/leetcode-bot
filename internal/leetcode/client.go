@@ -208,6 +208,61 @@ func (c *Client) GetRecentSubmissions(ctx context.Context, username string) ([]R
 	return data.RecentSubmissionList, nil
 }
 
+// GetUserSolvedProblems fetches all problems the user has successfully solved
+// (accepted submissions). Uses a high limit (5000) to capture the complete
+// history. Returns an empty slice if no solved problems are found. Results
+// are cached for StatsCacheTTL.
+func (c *Client) GetUserSolvedProblems(ctx context.Context, username string) ([]SolvedProblem, error) {
+	cacheKey := "solved:" + username
+	if cached, ok := c.cache.Get(cacheKey); ok {
+		return cached.([]SolvedProblem), nil
+	}
+
+	var data solvedProblemsResponse
+	err := c.query(ctx, "getUserSolvedProblems", QueryUserSolvedProblems, map[string]any{
+		"username": username,
+		"limit":    5000,
+	}, &data)
+	if err != nil {
+		return nil, fmt.Errorf("get user solved problems: %w", err)
+	}
+
+	// Return empty slice instead of nil for consistency.
+	if data.RecentACSubmissionList == nil {
+		data.RecentACSubmissionList = []SolvedProblem{}
+	}
+
+	c.cache.Set(cacheKey, data.RecentACSubmissionList, StatsCacheTTL)
+	return data.RecentACSubmissionList, nil
+}
+
+// GetProblemDetails fetches comprehensive metadata for a specific problem
+// including difficulty level and topic tags. Returns nil if the problem
+// doesn't exist. Results are cached for ProfileCacheTTL since problem
+// metadata rarely changes.
+func (c *Client) GetProblemDetails(ctx context.Context, titleSlug string) (*ProblemDetails, error) {
+	cacheKey := "problem:" + titleSlug
+	if cached, ok := c.cache.Get(cacheKey); ok {
+		return cached.(*ProblemDetails), nil
+	}
+
+	var data problemDetailsResponse
+	err := c.query(ctx, "getProblemDetails", QueryProblemDetails, map[string]any{
+		"titleSlug": titleSlug,
+	}, &data)
+	if err != nil {
+		return nil, fmt.Errorf("get problem details: %w", err)
+	}
+
+	// A null question means the problem doesn't exist.
+	if data.Question == nil {
+		return nil, nil
+	}
+
+	c.cache.Set(cacheKey, data.Question, ProfileCacheTTL)
+	return data.Question, nil
+}
+
 // ParseSubmissionCalendar double-parses the submissionCalendar field from
 // LeetCode. The field is a JSON-encoded string containing a JSON object that
 // maps unix timestamps (in seconds, as strings) to submission counts.

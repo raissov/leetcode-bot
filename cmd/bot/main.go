@@ -40,6 +40,18 @@ func main() {
 	}
 	log.Println("[main] database opened and migrated")
 
+	// --- Load curated lists from JSON files ---
+	curatedListFiles := []string{"data/blind75.json", "data/neetcode150.json"}
+	loadedCount := 0
+	for _, filePath := range curatedListFiles {
+		if err := db.LoadCuratedList(filePath); err != nil {
+			log.Printf("[main] warning: failed to load curated list from %s: %v", filePath, err)
+		} else {
+			loadedCount++
+		}
+	}
+	log.Printf("[main] loaded %d curated lists", loadedCount)
+
 	// --- Create LeetCode client ---
 	lcClient := leetcode.NewClient()
 	log.Println("[main] leetcode client created")

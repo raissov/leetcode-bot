@@ -138,9 +138,42 @@ func (b *Bot) handleConnect(ctx *th.Context, message telego.Message) error {
 	return sendErr
 }
 
-// handleStats fetches the user's LeetCode statistics, saves a snapshot,
-// checks for new achievements, and sends a formatted response.
+// handleStats routes to the appropriate stats subcommand handler based on the message text.
+// Supports: /stats (overview), /stats topics, /stats weekly
 func (b *Bot) handleStats(ctx *th.Context, message telego.Message) error {
+	// Parse subcommand from message: "/stats [subcommand]"
+	parts := strings.Fields(message.Text)
+
+	// Default to overview if no subcommand specified
+	if len(parts) == 1 {
+		return b.handleStatsOverview(ctx, message)
+	}
+
+	// Route to appropriate handler based on subcommand
+	subcommand := parts[1]
+	switch subcommand {
+	case "topics":
+		return b.handleStatsTopics(ctx, message)
+	case "weekly":
+		return b.handleStatsWeekly(ctx, message)
+	default:
+		// Unknown subcommand - show usage
+		chatID := message.Chat.ID
+		_, err := b.api.SendMessage(ctx, tu.Message(
+			tu.ID(chatID),
+			"\u26A0\uFE0F <b>Unknown subcommand.</b>\n\n"+
+				"<b>Available options:</b>\n"+
+				"/stats \u2014 Show overview\n"+
+				"/stats topics \u2014 Topic coverage breakdown\n"+
+				"/stats weekly \u2014 Past 7 days breakdown",
+		).WithParseMode(telego.ModeHTML))
+		return err
+	}
+}
+
+// handleStatsOverview fetches the user's LeetCode statistics, saves a snapshot,
+// checks for new achievements, and sends a formatted response.
+func (b *Bot) handleStatsOverview(ctx *th.Context, message telego.Message) error {
 	chatID := message.Chat.ID
 	telegramID := int64(0)
 	if message.From != nil {
@@ -166,7 +199,7 @@ func (b *Bot) handleStats(ctx *th.Context, message telego.Message) error {
 	b.updateGamification(ctx, telegramID, userStats)
 
 	// Format and send the stats message.
-	text := stats.FormatStats(userStats)
+	text := stats.FormatStats(userStats, nil)
 	_, err = b.api.SendMessage(ctx, tu.Message(
 		tu.ID(chatID),
 		text,
@@ -179,6 +212,110 @@ func (b *Bot) handleStats(ctx *th.Context, message telego.Message) error {
 	b.sendAchievementNotifications(ctx, chatID, newAchievements)
 
 	return nil
+}
+
+// handleStatsTopics shows topic coverage breakdown for the user.
+// This handler will be implemented in the next subtask.
+func (b *Bot) handleStatsTopics(ctx *th.Context, message telego.Message) error {
+	chatID := message.Chat.ID
+	telegramID := int64(0)
+	if message.From != nil {
+		telegramID = message.From.ID
+	}
+
+	// Get the user from the database to retrieve the internal user ID.
+	user, err := b.store.GetUserByTelegramID(telegramID)
+	if err != nil {
+		log.Printf("[bot] stats topics: failed to get user %d: %v", telegramID, err)
+		_, sendErr := b.api.SendMessage(ctx, tu.Message(
+			tu.ID(chatID),
+			"\u274C Failed to retrieve your user information. Please try again.",
+		).WithParseMode(telego.ModeHTML))
+		return sendErr
+	}
+	if user == nil {
+		_, sendErr := b.api.SendMessage(ctx, tu.Message(
+			tu.ID(chatID),
+			"\u274C User not found. Please use /start to register.",
+		).WithParseMode(telego.ModeHTML))
+		return sendErr
+	}
+
+	// Compute topic coverage for this user.
+	topicStats, err := b.stats.ComputeTopicCoverage(ctx, user.ID)
+	if err != nil {
+		log.Printf("[bot] stats topics: failed to compute topic coverage for user %d: %v", user.ID, err)
+		_, sendErr := b.api.SendMessage(ctx, tu.Message(
+			tu.ID(chatID),
+			"\u274C Failed to compute topic coverage. Please try again.",
+		).WithParseMode(telego.ModeHTML))
+		return sendErr
+	}
+
+	// Format and send the topic coverage message.
+	text := stats.FormatTopicCoverage(topicStats)
+	_, err = b.api.SendMessage(ctx, tu.Message(
+		tu.ID(chatID),
+		text,
+	).WithParseMode(telego.ModeHTML))
+	return err
+}
+
+// handleStatsWeekly shows the user's past 7 days breakdown.
+func (b *Bot) handleStatsWeekly(ctx *th.Context, message telego.Message) error {
+	chatID := message.Chat.ID
+	telegramID := int64(0)
+	if message.From != nil {
+		telegramID = message.From.ID
+	}
+
+	// Get the user from the database to retrieve the internal user ID.
+	user, err := b.store.GetUserByTelegramID(telegramID)
+	if err != nil {
+		log.Printf("[bot] stats weekly: failed to get user %d: %v", telegramID, err)
+		_, sendErr := b.api.SendMessage(ctx, tu.Message(
+			tu.ID(chatID),
+			"\u274C Failed to retrieve your user information. Please try again.",
+		).WithParseMode(telego.ModeHTML))
+		return sendErr
+	}
+	if user == nil {
+		_, sendErr := b.api.SendMessage(ctx, tu.Message(
+			tu.ID(chatID),
+			"\u274C User not found. Please use /start to register.",
+		).WithParseMode(telego.ModeHTML))
+		return sendErr
+	}
+
+	// Compute weekly statistics for this user.
+	weeklyStats, err := b.stats.ComputeWeeklyStats(ctx, user.ID)
+	if err != nil {
+		log.Printf("[bot] stats weekly: failed to compute weekly stats for user %d: %v", user.ID, err)
+		_, sendErr := b.api.SendMessage(ctx, tu.Message(
+			tu.ID(chatID),
+			"\u274C Failed to compute weekly statistics. Please try again.",
+		).WithParseMode(telego.ModeHTML))
+		return sendErr
+	}
+
+	// Convert DailyBreakdown to map[time.Time]int for formatting.
+	dailyActivity := make(map[time.Time]int, len(weeklyStats.DailyBreakdown))
+	for _, day := range weeklyStats.DailyBreakdown {
+		dailyActivity[day.Date.Truncate(24*time.Hour)] = day.Solved
+	}
+
+	// Calculate week start and end dates.
+	now := time.Now().UTC()
+	weekEnd := now.Truncate(24 * time.Hour)
+	weekStart := weekEnd.AddDate(0, 0, -6)
+
+	// Format and send the weekly stats message.
+	text := stats.FormatWeeklyStats(weekStart, weekEnd, dailyActivity, weeklyStats.TotalThisWeek)
+	_, err = b.api.SendMessage(ctx, tu.Message(
+		tu.ID(chatID),
+		text,
+	).WithParseMode(telego.ModeHTML))
+	return err
 }
 
 // handleStreak fetches the user's submission calendar, computes the current

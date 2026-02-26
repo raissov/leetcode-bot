@@ -35,8 +35,9 @@ const (
 
 // FormatStats formats the user's comprehensive statistics as an HTML-formatted
 // Telegram message. Includes total solved, difficulty breakdown with emoji
-// bars, acceptance rate, ranking, and progress delta since last check.
-func FormatStats(stats *UserStats) string {
+// bars, acceptance rate, ranking, progress delta since last check, and optional
+// curated list progress (e.g., Blind 75).
+func FormatStats(stats *UserStats, listProgress *ListProgress) string {
 	if stats == nil {
 		return emojiChart + " <b>No stats available yet.</b>\nConnect your LeetCode account with /connect."
 	}
@@ -93,6 +94,21 @@ func FormatStats(stats *UserStats) string {
 	// Active days.
 	if stats.TotalActiveDays > 0 {
 		b.WriteString(fmt.Sprintf(emojiCal+" <b>Active Days:</b> %d\n", stats.TotalActiveDays))
+	}
+
+	// Curated list progress (e.g., Blind 75).
+	if listProgress != nil {
+		b.WriteString("\n")
+		b.WriteString(fmt.Sprintf(emojiTarget+" <b>%s:</b> %d/%d", listProgress.ListName, listProgress.SolvedCount, listProgress.TotalCount))
+		b.WriteString(fmt.Sprintf("  <i>(%.0f%%)</i>", listProgress.Percentage))
+
+		// Mini progress bar.
+		pct := int(listProgress.Percentage)
+		if pct > 100 {
+			pct = 100
+		}
+		b.WriteString("  " + formatMiniBar(pct))
+		b.WriteString("\n")
 	}
 
 	return b.String()
@@ -250,6 +266,95 @@ func FormatAchievements(unlocked map[string]bool, all []gamification.Achievement
 	return b.String()
 }
 
+// FormatTopicCoverage formats the user's topic coverage statistics as an
+// HTML-formatted Telegram message. Shows each topic with solved/total counts,
+// percentage, and a mini progress bar. Topics are sorted by percentage in
+// descending order.
+func FormatTopicCoverage(topicStats map[string]*TopicStats) string {
+	var b strings.Builder
+
+	b.WriteString(emojiChart + " <b>Topic Coverage</b>\n\n")
+
+	// Handle empty case.
+	if len(topicStats) == 0 {
+		b.WriteString("<i>No topics covered yet. Start solving problems to see your topic breakdown!</i>\n")
+		return b.String()
+	}
+
+	// Convert map to slice for sorting.
+	type topicEntry struct {
+		name string
+		stat *TopicStats
+	}
+	entries := make([]topicEntry, 0, len(topicStats))
+	for name, stat := range topicStats {
+		entries = append(entries, topicEntry{name: name, stat: stat})
+	}
+
+	// Sort by percentage descending, then by solved count descending.
+	for i := 0; i < len(entries); i++ {
+		for j := i + 1; j < len(entries); j++ {
+			if entries[j].stat.Percentage > entries[i].stat.Percentage ||
+				(entries[j].stat.Percentage == entries[i].stat.Percentage && entries[j].stat.Solved > entries[i].stat.Solved) {
+				entries[i], entries[j] = entries[j], entries[i]
+			}
+		}
+	}
+
+	// Format each topic.
+	for _, entry := range entries {
+		stat := entry.stat
+		b.WriteString(fmt.Sprintf("<b>%s:</b> %d/%d", stat.Topic, stat.Solved, stat.Total))
+		b.WriteString(fmt.Sprintf("  <i>(%.0f%%)</i>", stat.Percentage))
+
+		// Mini progress bar.
+		pct := int(stat.Percentage)
+		if pct > 100 {
+			pct = 100
+		}
+		b.WriteString("  " + formatMiniBar(pct))
+		b.WriteString("\n")
+	}
+
+	return b.String()
+}
+
+// FormatWeeklyStats formats the user's weekly statistics as an HTML-formatted
+// Telegram message. Shows a calendar-style daily breakdown for the week with
+// activity indicators and summary statistics.
+func FormatWeeklyStats(weekStart, weekEnd time.Time, dailyActivity map[time.Time]int, totalSolved int) string {
+	var b strings.Builder
+
+	b.WriteString(emojiCal + " <b>Weekly Statistics</b>\n\n")
+
+	// Week range.
+	b.WriteString(fmt.Sprintf("<b>Week:</b> %s - %s\n\n",
+		weekStart.Format("Jan 02"),
+		weekEnd.Format("Jan 02, 2006")))
+
+	// Daily breakdown calendar.
+	b.WriteString("<b>Daily Activity:</b>\n")
+	b.WriteString(formatWeeklyCalendar(weekStart, dailyActivity))
+	b.WriteString("\n\n")
+
+	// Summary stats.
+	b.WriteString(fmt.Sprintf(emojiTarget+" <b>Problems Solved:</b> %d\n", totalSolved))
+
+	// Motivational message based on activity.
+	activeDays := countActiveDays(weekStart, dailyActivity)
+	if activeDays == 7 {
+		b.WriteString("\n" + emojiFire + " Perfect week! You coded every day!")
+	} else if activeDays >= 5 {
+		b.WriteString("\n" + emojiStar + " Great consistency this week!")
+	} else if activeDays > 0 {
+		b.WriteString("\n" + emojiRocket + " Keep building that momentum!")
+	} else {
+		b.WriteString("\n" + "Time to start coding! " + emojiTarget)
+	}
+
+	return b.String()
+}
+
 // --- Helper functions ---
 
 // formatDifficultyLine formats a single difficulty row with emoji, label,
@@ -389,4 +494,57 @@ func levelMinPoints(level int) int {
 		return 0
 	}
 	return thresholds[level-1]
+}
+
+// formatWeeklyCalendar renders a 7-day weekly calendar showing daily activity.
+// Similar to formatMiniCalendar but for a specific week range, showing problem
+// counts below each day.
+func formatWeeklyCalendar(weekStart time.Time, dailyActivity map[time.Time]int) string {
+	var squares strings.Builder
+	var labels strings.Builder
+	var counts strings.Builder
+
+	for i := 0; i < 7; i++ {
+		day := weekStart.AddDate(0, 0, i)
+		dayKey := day.UTC().Truncate(24 * time.Hour)
+
+		count := 0
+		if dailyActivity != nil {
+			count = dailyActivity[dayKey]
+		}
+
+		if count > 0 {
+			squares.WriteString(squareGreen)
+		} else {
+			squares.WriteString(squareGray)
+		}
+
+		// Abbreviated day name (Mo, Tu, ...).
+		labels.WriteString(day.Format("Mon")[0:2])
+
+		// Problem count for the day.
+		if count > 0 {
+			counts.WriteString(fmt.Sprintf(" %d ", count))
+		} else {
+			counts.WriteString(" - ")
+		}
+
+		if i < 6 {
+			labels.WriteString(" ")
+		}
+	}
+
+	return squares.String() + "\n<code>" + labels.String() + "</code>\n<code>" + counts.String() + "</code>"
+}
+
+// countActiveDays counts how many days in the week had activity (problems solved).
+func countActiveDays(weekStart time.Time, dailyActivity map[time.Time]int) int {
+	count := 0
+	for i := 0; i < 7; i++ {
+		day := weekStart.AddDate(0, 0, i).UTC().Truncate(24 * time.Hour)
+		if dailyActivity != nil && dailyActivity[day] > 0 {
+			count++
+		}
+	}
+	return count
 }

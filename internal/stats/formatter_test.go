@@ -14,7 +14,7 @@ import (
 // ---------------------------------------------------------------------------
 
 func TestFormatStats_NilStats(t *testing.T) {
-	got := FormatStats(nil)
+	got := FormatStats(nil, nil)
 
 	if !strings.Contains(got, "No stats available yet") {
 		t.Errorf("expected nil-stats message, got %q", got)
@@ -27,7 +27,7 @@ func TestFormatStats_NilStats(t *testing.T) {
 
 func TestFormatStats_ZeroState(t *testing.T) {
 	stats := &UserStats{TotalSolved: 0}
-	got := FormatStats(stats)
+	got := FormatStats(stats, nil)
 
 	// Zero-state delegates to gamification.ZeroStateMessage().
 	want := gamification.ZeroStateMessage()
@@ -59,7 +59,7 @@ func TestFormatStats_SampleData(t *testing.T) {
 		},
 	}
 
-	got := FormatStats(stats)
+	got := FormatStats(stats, nil)
 
 	// Verify header.
 	if !strings.Contains(got, "<b>Your LeetCode Statistics</b>") {
@@ -135,7 +135,7 @@ func TestFormatStats_NoDelta(t *testing.T) {
 		TotalHard:      700,
 	}
 
-	got := FormatStats(stats)
+	got := FormatStats(stats, nil)
 
 	// Should not contain any delta indicators.
 	if strings.Contains(got, "(+") {
@@ -169,7 +169,7 @@ func TestFormatStats_ZeroDelta(t *testing.T) {
 		},
 	}
 
-	got := FormatStats(stats)
+	got := FormatStats(stats, nil)
 
 	// Zero deltas should not produce delta display.
 	if strings.Contains(got, "(+0)") {
@@ -194,7 +194,7 @@ func TestFormatStats_RankingDecline(t *testing.T) {
 		},
 	}
 
-	got := FormatStats(stats)
+	got := FormatStats(stats, nil)
 
 	// Positive ranking delta → worse ranking → ↓ indicator.
 	if !strings.Contains(got, "\u2193500") {
@@ -215,7 +215,7 @@ func TestFormatStats_NegativeAcceptanceRateDelta(t *testing.T) {
 		},
 	}
 
-	got := FormatStats(stats)
+	got := FormatStats(stats, nil)
 
 	// Negative acceptance rate delta should not have a + sign.
 	if !strings.Contains(got, "(-2.3%)") {
@@ -234,7 +234,7 @@ func TestFormatStats_NoRanking(t *testing.T) {
 		TotalEasy:      800,
 	}
 
-	got := FormatStats(stats)
+	got := FormatStats(stats, nil)
 
 	if strings.Contains(got, "Ranking") {
 		t.Error("should not display ranking when it is 0")
@@ -252,10 +252,71 @@ func TestFormatStats_NoActiveDays(t *testing.T) {
 		TotalActiveDays: 0,
 	}
 
-	got := FormatStats(stats)
+	got := FormatStats(stats, nil)
 
 	if strings.Contains(got, "Active Days") {
 		t.Error("should not display active days when it is 0")
+	}
+
+	assertValidHTML(t, got)
+}
+
+func TestFormatStats_WithListProgress(t *testing.T) {
+	stats := &UserStats{
+		TotalSolved:     50,
+		EasySolved:      30,
+		MediumSolved:    15,
+		HardSolved:      5,
+		AcceptanceRate:  70.0,
+		Ranking:         10000,
+		TotalEasy:       800,
+		TotalMedium:     1600,
+		TotalHard:       700,
+		TotalActiveDays: 45,
+	}
+
+	listProgress := &ListProgress{
+		ListName:    "Blind 75",
+		TotalCount:  75,
+		SolvedCount: 30,
+		Percentage:  40.0,
+		SolvedSlugs: []string{"two-sum", "valid-parentheses"},
+	}
+
+	got := FormatStats(stats, listProgress)
+
+	// Verify list progress is displayed.
+	if !strings.Contains(got, "<b>Blind 75:</b> 30/75") {
+		t.Error("missing list progress count")
+	}
+	if !strings.Contains(got, "(40%)") {
+		t.Error("missing list progress percentage")
+	}
+	// Mini progress bar should be present.
+	if !strings.Contains(got, barFilled) || !strings.Contains(got, barEmpty) {
+		t.Error("missing mini progress bar for list progress")
+	}
+
+	assertValidHTML(t, got)
+}
+
+func TestFormatStats_WithoutListProgress(t *testing.T) {
+	stats := &UserStats{
+		TotalSolved:    50,
+		EasySolved:     30,
+		MediumSolved:   15,
+		HardSolved:     5,
+		AcceptanceRate: 70.0,
+		TotalEasy:      800,
+		TotalMedium:    1600,
+		TotalHard:      700,
+	}
+
+	got := FormatStats(stats, nil)
+
+	// Verify list progress is NOT displayed when nil.
+	if strings.Contains(got, "Blind 75") {
+		t.Error("should not display list progress when it is nil")
 	}
 
 	assertValidHTML(t, got)
