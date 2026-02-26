@@ -262,13 +262,59 @@ func (b *Bot) handleStatsTopics(ctx *th.Context, message telego.Message) error {
 }
 
 // handleStatsWeekly shows the user's past 7 days breakdown.
-// This handler will be implemented in the next subtask.
 func (b *Bot) handleStatsWeekly(ctx *th.Context, message telego.Message) error {
 	chatID := message.Chat.ID
-	_, err := b.api.SendMessage(ctx, tu.Message(
+	telegramID := int64(0)
+	if message.From != nil {
+		telegramID = message.From.ID
+	}
+
+	// Get the user from the database to retrieve the internal user ID.
+	user, err := b.store.GetUserByTelegramID(telegramID)
+	if err != nil {
+		log.Printf("[bot] stats weekly: failed to get user %d: %v", telegramID, err)
+		_, sendErr := b.api.SendMessage(ctx, tu.Message(
+			tu.ID(chatID),
+			"\u274C Failed to retrieve your user information. Please try again.",
+		).WithParseMode(telego.ModeHTML))
+		return sendErr
+	}
+	if user == nil {
+		_, sendErr := b.api.SendMessage(ctx, tu.Message(
+			tu.ID(chatID),
+			"\u274C User not found. Please use /start to register.",
+		).WithParseMode(telego.ModeHTML))
+		return sendErr
+	}
+
+	// Compute weekly statistics for this user.
+	weeklyStats, err := b.stats.ComputeWeeklyStats(ctx, user.ID)
+	if err != nil {
+		log.Printf("[bot] stats weekly: failed to compute weekly stats for user %d: %v", user.ID, err)
+		_, sendErr := b.api.SendMessage(ctx, tu.Message(
+			tu.ID(chatID),
+			"\u274C Failed to compute weekly statistics. Please try again.",
+		).WithParseMode(telego.ModeHTML))
+		return sendErr
+	}
+
+	// Convert DailyBreakdown to map[time.Time]int for formatting.
+	dailyActivity := make(map[time.Time]int, len(weeklyStats.DailyBreakdown))
+	for _, day := range weeklyStats.DailyBreakdown {
+		dailyActivity[day.Date.Truncate(24*time.Hour)] = day.Solved
+	}
+
+	// Calculate week start and end dates.
+	now := time.Now().UTC()
+	weekEnd := now.Truncate(24 * time.Hour)
+	weekStart := weekEnd.AddDate(0, 0, -6)
+
+	// Format and send the weekly stats message.
+	text := stats.FormatWeeklyStats(weekStart, weekEnd, dailyActivity, weeklyStats.TotalThisWeek)
+	_, err = b.api.SendMessage(ctx, tu.Message(
 		tu.ID(chatID),
-		"\U0001F6A7 Weekly stats coming soon!",
-	))
+		text,
+	).WithParseMode(telego.ModeHTML))
 	return err
 }
 
