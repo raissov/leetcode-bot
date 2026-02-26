@@ -166,7 +166,7 @@ func (b *Bot) handleStats(ctx *th.Context, message telego.Message) error {
 	b.updateGamification(ctx, telegramID, userStats)
 
 	// Format and send the stats message.
-	text := stats.FormatStats(userStats)
+	text := stats.FormatStats(userStats, nil)
 	_, err = b.api.SendMessage(ctx, tu.Message(
 		tu.ID(chatID),
 		text,

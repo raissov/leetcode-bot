@@ -35,8 +35,9 @@ const (
 
 // FormatStats formats the user's comprehensive statistics as an HTML-formatted
 // Telegram message. Includes total solved, difficulty breakdown with emoji
-// bars, acceptance rate, ranking, and progress delta since last check.
-func FormatStats(stats *UserStats) string {
+// bars, acceptance rate, ranking, progress delta since last check, and optional
+// curated list progress (e.g., Blind 75).
+func FormatStats(stats *UserStats, listProgress *ListProgress) string {
 	if stats == nil {
 		return emojiChart + " <b>No stats available yet.</b>\nConnect your LeetCode account with /connect."
 	}
@@ -93,6 +94,21 @@ func FormatStats(stats *UserStats) string {
 	// Active days.
 	if stats.TotalActiveDays > 0 {
 		b.WriteString(fmt.Sprintf(emojiCal+" <b>Active Days:</b> %d\n", stats.TotalActiveDays))
+	}
+
+	// Curated list progress (e.g., Blind 75).
+	if listProgress != nil {
+		b.WriteString("\n")
+		b.WriteString(fmt.Sprintf(emojiTarget+" <b>%s:</b> %d/%d", listProgress.ListName, listProgress.SolvedCount, listProgress.TotalCount))
+		b.WriteString(fmt.Sprintf("  <i>(%.0f%%)</i>", listProgress.Percentage))
+
+		// Mini progress bar.
+		pct := int(listProgress.Percentage)
+		if pct > 100 {
+			pct = 100
+		}
+		b.WriteString("  " + formatMiniBar(pct))
+		b.WriteString("\n")
 	}
 
 	return b.String()
