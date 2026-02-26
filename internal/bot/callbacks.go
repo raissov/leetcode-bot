@@ -107,8 +107,8 @@ func (b *Bot) handleAchievementCategoryCallback(ctx *th.Context, query telego.Ca
 // achievementCategories defines human-readable names for achievement
 // categories used in inline keyboard labels.
 var achievementCategories = map[string]string{
-	"solving":  "\U0001F4CA Solving",
-	"streaks":  "\U0001F525 Streaks",
+	"solving":    "\U0001F4CA Solving",
+	"streaks":    "\U0001F525 Streaks",
 	"milestones": "\U0001F3C6 Milestones",
 }
 

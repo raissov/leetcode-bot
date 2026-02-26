@@ -9,12 +9,12 @@ import (
 
 // Points awarded per action.
 const (
-	PointsEasy          = 10
-	PointsMedium        = 25
-	PointsHard          = 50
-	PointsDailyStreak   = 5
-	Points7DayBonus     = 50
-	Points30DayBonus    = 300
+	PointsEasy        = 10
+	PointsMedium      = 25
+	PointsHard        = 50
+	PointsDailyStreak = 5
+	Points7DayBonus   = 50
+	Points30DayBonus  = 300
 )
 
 // levelThreshold defines the minimum points required for a level and its title.

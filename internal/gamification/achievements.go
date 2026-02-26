@@ -3,14 +3,14 @@ package gamification
 // UserStats holds the aggregated stats used for checking achievement eligibility.
 // This is populated from the user's latest LeetCode data and stored state.
 type UserStats struct {
-	TotalSolved    int
-	EasySolved     int
-	MediumSolved   int
-	HardSolved     int
-	CurrentStreak  int
-	BestStreak     int
-	TotalEasy      int  // Total easy problems available on LeetCode.
-	SolvedDaily    bool // Whether the user solved today's daily challenge.
+	TotalSolved   int
+	EasySolved    int
+	MediumSolved  int
+	HardSolved    int
+	CurrentStreak int
+	BestStreak    int
+	TotalEasy     int  // Total easy problems available on LeetCode.
+	SolvedDaily   bool // Whether the user solved today's daily challenge.
 }
 
 // Achievement defines a single unlockable achievement with its check logic.

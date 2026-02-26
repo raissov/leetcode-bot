@@ -43,7 +43,7 @@ func TestFormatStats_SampleData(t *testing.T) {
 		EasySolved:      80,
 		MediumSolved:    50,
 		HardSolved:      20,
-		AcceptanceRate:   65.3,
+		AcceptanceRate:  65.3,
 		Ranking:         42000,
 		TotalEasy:       800,
 		TotalMedium:     1600,
@@ -360,9 +360,9 @@ func TestFormatStreak_WithCalendar(t *testing.T) {
 	today := time.Now().UTC().Truncate(24 * time.Hour)
 
 	calendar := map[time.Time]int{
-		today:                      3,
-		today.AddDate(0, 0, -1):   2,
-		today.AddDate(0, 0, -2):   1,
+		today:                   3,
+		today.AddDate(0, 0, -1): 2,
+		today.AddDate(0, 0, -2): 1,
 		// days -3, -4, -5, -6 have no activity
 	}
 
@@ -866,7 +866,7 @@ func TestFormatProgressBar(t *testing.T) {
 		pct     int
 		wantLen int // total length including brackets
 	}{
-		{"0%", 0, 12},   // [ + 10 chars + ]
+		{"0%", 0, 12}, // [ + 10 chars + ]
 		{"50%", 50, 12},
 		{"100%", 100, 12},
 	}

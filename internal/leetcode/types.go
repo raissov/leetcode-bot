@@ -9,8 +9,8 @@ type graphqlRequest struct {
 
 // graphqlResponse is the generic wrapper for all LeetCode GraphQL responses.
 type graphqlResponse struct {
-	Data   any              `json:"data"`
-	Errors []graphqlError   `json:"errors,omitempty"`
+	Data   any            `json:"data"`
+	Errors []graphqlError `json:"errors,omitempty"`
 }
 
 // graphqlError represents a single error in a GraphQL response.
@@ -22,9 +22,9 @@ type graphqlError struct {
 
 // userProfileResponse wraps the data returned by the user profile query.
 type userProfileResponse struct {
-	AllQuestionsCount    []QuestionCount      `json:"allQuestionsCount"`
-	MatchedUser          *MatchedUser         `json:"matchedUser"`
-	RecentSubmissionList []RecentSubmission   `json:"recentSubmissionList"`
+	AllQuestionsCount    []QuestionCount    `json:"allQuestionsCount"`
+	MatchedUser          *MatchedUser       `json:"matchedUser"`
+	RecentSubmissionList []RecentSubmission `json:"recentSubmissionList"`
 }
 
 // QuestionCount holds the total number of questions for a given difficulty.
@@ -35,14 +35,14 @@ type QuestionCount struct {
 
 // MatchedUser contains the full user profile returned by the matchedUser query.
 type MatchedUser struct {
-	Username           string           `json:"username"`
-	Contributions      Contributions    `json:"contributions"`
-	Profile            UserProfile      `json:"profile"`
-	SubmissionCalendar string           `json:"submissionCalendar"`
-	SubmitStats        SubmitStats      `json:"submitStats"`
-	Badges             []Badge          `json:"badges"`
-	UpcomingBadges     []UpcomingBadge  `json:"upcomingBadges"`
-	ActiveBadge        *ActiveBadge     `json:"activeBadge"`
+	Username           string          `json:"username"`
+	Contributions      Contributions   `json:"contributions"`
+	Profile            UserProfile     `json:"profile"`
+	SubmissionCalendar string          `json:"submissionCalendar"`
+	SubmitStats        SubmitStats     `json:"submitStats"`
+	Badges             []Badge         `json:"badges"`
+	UpcomingBadges     []UpcomingBadge `json:"upcomingBadges"`
+	ActiveBadge        *ActiveBadge    `json:"activeBadge"`
 }
 
 // Contributions holds the user's contribution stats.
@@ -122,11 +122,11 @@ type calendarMatchedUser struct {
 
 // UserCalendar holds the user's activity calendar data.
 type UserCalendar struct {
-	ActiveYears        []int       `json:"activeYears"`
-	Streak             int         `json:"streak"`
-	TotalActiveDays    int         `json:"totalActiveDays"`
-	DCCBadges          []DCCBadge  `json:"dccBadges"`
-	SubmissionCalendar string      `json:"submissionCalendar"`
+	ActiveYears        []int      `json:"activeYears"`
+	Streak             int        `json:"streak"`
+	TotalActiveDays    int        `json:"totalActiveDays"`
+	DCCBadges          []DCCBadge `json:"dccBadges"`
+	SubmissionCalendar string     `json:"submissionCalendar"`
 }
 
 // DCCBadge represents a daily coding challenge badge.
@@ -150,9 +150,9 @@ type dailyChallengeResponse struct {
 
 // DailyChallenge represents today's daily coding challenge.
 type DailyChallenge struct {
-	Date     string         `json:"date"`
-	Link     string         `json:"link"`
-	Question DailyQuestion  `json:"question"`
+	Date     string        `json:"date"`
+	Link     string        `json:"link"`
+	Question DailyQuestion `json:"question"`
 }
 
 // DailyQuestion holds the question details for a daily challenge.
@@ -175,11 +175,11 @@ type TopicTag struct {
 
 // ChallengeQuestion holds metadata about the daily challenge question.
 type ChallengeQuestion struct {
-	ID                     string `json:"id"`
-	Date                   string `json:"date"`
-	IncompleteChallengeCount int  `json:"incompleteChallengeCount"`
-	StreakCount             int    `json:"streakCount"`
-	Type                   string `json:"type"`
+	ID                       string `json:"id"`
+	Date                     string `json:"date"`
+	IncompleteChallengeCount int    `json:"incompleteChallengeCount"`
+	StreakCount              int    `json:"streakCount"`
+	Type                     string `json:"type"`
 }
 
 // --- Recent Submissions (standalone query) ---

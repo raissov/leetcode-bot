@@ -8,19 +8,19 @@ import (
 
 // User represents a row in the users table.
 type User struct {
-	ID             int64
-	TelegramID     int64
-	TelegramName   string
-	LeetCodeUser   string
-	Timezone       string
-	RemindHour     int
-	RemindEnabled  bool
-	Points         int
-	Level          int
-	CurrentStreak  int
-	BestStreak     int
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID            int64
+	TelegramID    int64
+	TelegramName  string
+	LeetCodeUser  string
+	Timezone      string
+	RemindHour    int
+	RemindEnabled bool
+	Points        int
+	Level         int
+	CurrentStreak int
+	BestStreak    int
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 // CreateUser inserts a new user with the given Telegram ID and display name.
