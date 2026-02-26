@@ -138,9 +138,42 @@ func (b *Bot) handleConnect(ctx *th.Context, message telego.Message) error {
 	return sendErr
 }
 
-// handleStats fetches the user's LeetCode statistics, saves a snapshot,
-// checks for new achievements, and sends a formatted response.
+// handleStats routes to the appropriate stats subcommand handler based on the message text.
+// Supports: /stats (overview), /stats topics, /stats weekly
 func (b *Bot) handleStats(ctx *th.Context, message telego.Message) error {
+	// Parse subcommand from message: "/stats [subcommand]"
+	parts := strings.Fields(message.Text)
+
+	// Default to overview if no subcommand specified
+	if len(parts) == 1 {
+		return b.handleStatsOverview(ctx, message)
+	}
+
+	// Route to appropriate handler based on subcommand
+	subcommand := parts[1]
+	switch subcommand {
+	case "topics":
+		return b.handleStatsTopics(ctx, message)
+	case "weekly":
+		return b.handleStatsWeekly(ctx, message)
+	default:
+		// Unknown subcommand - show usage
+		chatID := message.Chat.ID
+		_, err := b.api.SendMessage(ctx, tu.Message(
+			tu.ID(chatID),
+			"\u26A0\uFE0F <b>Unknown subcommand.</b>\n\n"+
+				"<b>Available options:</b>\n"+
+				"/stats \u2014 Show overview\n"+
+				"/stats topics \u2014 Topic coverage breakdown\n"+
+				"/stats weekly \u2014 Past 7 days breakdown",
+		).WithParseMode(telego.ModeHTML))
+		return err
+	}
+}
+
+// handleStatsOverview fetches the user's LeetCode statistics, saves a snapshot,
+// checks for new achievements, and sends a formatted response.
+func (b *Bot) handleStatsOverview(ctx *th.Context, message telego.Message) error {
 	chatID := message.Chat.ID
 	telegramID := int64(0)
 	if message.From != nil {
@@ -179,6 +212,28 @@ func (b *Bot) handleStats(ctx *th.Context, message telego.Message) error {
 	b.sendAchievementNotifications(ctx, chatID, newAchievements)
 
 	return nil
+}
+
+// handleStatsTopics shows topic coverage breakdown for the user.
+// This handler will be implemented in the next subtask.
+func (b *Bot) handleStatsTopics(ctx *th.Context, message telego.Message) error {
+	chatID := message.Chat.ID
+	_, err := b.api.SendMessage(ctx, tu.Message(
+		tu.ID(chatID),
+		"\U0001F6A7 Topic stats coming soon!",
+	))
+	return err
+}
+
+// handleStatsWeekly shows the user's past 7 days breakdown.
+// This handler will be implemented in the next subtask.
+func (b *Bot) handleStatsWeekly(ctx *th.Context, message telego.Message) error {
+	chatID := message.Chat.ID
+	_, err := b.api.SendMessage(ctx, tu.Message(
+		tu.ID(chatID),
+		"\U0001F6A7 Weekly stats coming soon!",
+	))
+	return err
 }
 
 // handleStreak fetches the user's submission calendar, computes the current
