@@ -1,6 +1,6 @@
 # Go binaries
-bot
-leetcode-bot
+/bot
+/leetcode-bot
 *.exe
 
 # Auto Claude data directory
