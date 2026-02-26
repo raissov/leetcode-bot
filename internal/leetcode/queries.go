@@ -129,3 +129,33 @@ const QueryRecentSubmissions = `query ($username: String!, $limit: Int) {
     lang
   }
 }`
+
+// QueryUserSolvedProblems fetches all problems the user has successfully
+// solved (accepted submissions). Returns problem metadata including title,
+// slug, and submission timestamp. Uses a high limit to capture all solved
+// problems (LeetCode API supports up to 5000 results).
+const QueryUserSolvedProblems = `query ($username: String!, $limit: Int!) {
+  recentAcSubmissionList(username: $username, limit: $limit) {
+    id
+    title
+    titleSlug
+    timestamp
+  }
+}`
+
+// QueryProblemDetails fetches detailed metadata for a specific problem
+// including difficulty level and topic tags. Used to enrich solved problem
+// data with full metadata.
+const QueryProblemDetails = `query ($titleSlug: String!) {
+  question(titleSlug: $titleSlug) {
+    questionId
+    questionFrontendId
+    title
+    titleSlug
+    difficulty
+    topicTags {
+      name
+      slug
+    }
+  }
+}`
