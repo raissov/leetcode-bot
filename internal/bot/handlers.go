@@ -218,10 +218,46 @@ func (b *Bot) handleStatsOverview(ctx *th.Context, message telego.Message) error
 // This handler will be implemented in the next subtask.
 func (b *Bot) handleStatsTopics(ctx *th.Context, message telego.Message) error {
 	chatID := message.Chat.ID
-	_, err := b.api.SendMessage(ctx, tu.Message(
+	telegramID := int64(0)
+	if message.From != nil {
+		telegramID = message.From.ID
+	}
+
+	// Get the user from the database to retrieve the internal user ID.
+	user, err := b.store.GetUserByTelegramID(telegramID)
+	if err != nil {
+		log.Printf("[bot] stats topics: failed to get user %d: %v", telegramID, err)
+		_, sendErr := b.api.SendMessage(ctx, tu.Message(
+			tu.ID(chatID),
+			"\u274C Failed to retrieve your user information. Please try again.",
+		).WithParseMode(telego.ModeHTML))
+		return sendErr
+	}
+	if user == nil {
+		_, sendErr := b.api.SendMessage(ctx, tu.Message(
+			tu.ID(chatID),
+			"\u274C User not found. Please use /start to register.",
+		).WithParseMode(telego.ModeHTML))
+		return sendErr
+	}
+
+	// Compute topic coverage for this user.
+	topicStats, err := b.stats.ComputeTopicCoverage(ctx, user.ID)
+	if err != nil {
+		log.Printf("[bot] stats topics: failed to compute topic coverage for user %d: %v", user.ID, err)
+		_, sendErr := b.api.SendMessage(ctx, tu.Message(
+			tu.ID(chatID),
+			"\u274C Failed to compute topic coverage. Please try again.",
+		).WithParseMode(telego.ModeHTML))
+		return sendErr
+	}
+
+	// Format and send the topic coverage message.
+	text := stats.FormatTopicCoverage(topicStats)
+	_, err = b.api.SendMessage(ctx, tu.Message(
 		tu.ID(chatID),
-		"\U0001F6A7 Topic stats coming soon!",
-	))
+		text,
+	).WithParseMode(telego.ModeHTML))
 	return err
 }
 
