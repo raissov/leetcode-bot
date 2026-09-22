@@ -1,0 +1,43 @@
+{
+  "spec_name": "004-fix-getuserprofile-operation-for-leetcode-connecti",
+  "workflow_type": "simple",
+  "total_phases": 1,
+  "recommended_workers": 1,
+  "phases": [
+    {
+      "phase": 1,
+      "name": "Fix GraphQL Operation Names",
+      "description": "Add named operations to all 5 anonymous GraphQL query strings in queries.go so they match the operationName sent by client.go",
+      "depends_on": [],
+      "subtasks": [
+        {
+          "id": "subtask-1-1",
+          "description": "Add operation names to all 5 anonymous query constants in internal/leetcode/queries.go: getUserProfile, questionOfToday, getRecentSubmissionList, getUserSolvedProblems, getProblemDetails. Each query's operation name must match the opName string passed in the corresponding client.go method call.",
+          "service": "internal/leetcode",
+          "status": "pending",
+          "files_to_create": [],
+          "files_to_modify": [
+            "internal/leetcode/queries.go"
+          ],
+          "patterns_from": [
+            "internal/leetcode/client.go"
+          ],
+          "verification": {
+            "type": "command",
+            "run": "go build ./... && go test ./internal/leetcode/..."
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "created_at": "2026-02-27T01:30:00Z",
+    "complexity": "simple",
+    "estimated_sessions": 1
+  },
+  "status": "in_progress",
+  "planStatus": "in_progress",
+  "xstateState": "planning",
+  "executionPhase": "planning",
+  "updated_at": "2026-02-26T20:21:57.451Z"
+}
